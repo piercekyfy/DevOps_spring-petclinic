@@ -1,0 +1,100 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'Profile',
+            choices: ['all', 'h2', 'mysql', 'postgres'],
+            description: 'Spring database profile.'
+        )
+    }
+
+    stages {
+        stage("Checkout") {
+            steps{
+                checkout scm
+            }
+        }
+
+        stage("Compile") {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+        stage("Start Databases") {
+            when {
+                expression {
+                    params.Profile = 'all' ||
+                    params.Profile = 'mysql' ||
+                    params.Profile = 'postgres'
+                }
+            }
+            steps {
+                sh 'docker compose up'
+                sleep 5
+            }
+        }
+
+        stage("Tests") {
+            parallel {
+                stage('H2') {
+                    when {
+                        expression {
+                            params.Profile = 'all' ||
+                            params.Profile = 'h2'
+                        }
+                    }
+                    steps {
+                        sh 'mvn test'
+                    }
+                    post {
+                        always {
+                            junit 'target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+
+                stage('MySQL') {
+                    when {
+                        expression {
+                            params.Profile = 'all' ||
+                            params.Profile = 'mysql'
+                        }
+                    }
+                    steps {
+                        sh 'mvn test -Dspring.profiles.active=mysql'
+                    }
+                    post {
+                        always {
+                            junit 'target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+
+                stage('Postgres') {
+                    when {
+                        expression {
+                            params.Profile = 'all' ||
+                            params.Profile = 'postgres'
+                        }
+                    }
+                    steps {
+                        sh 'mvn test -Dspring.profiles.active=postgres'
+                    }
+                    post {
+                        always {
+                            junit 'target/surefire-reports/*.xml'
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker compose down'
+        }
+    }
+}
