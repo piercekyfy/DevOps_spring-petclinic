@@ -26,12 +26,8 @@ pipeline {
             }
         }
 
-        stage("Docker Test") {
-            steps {
-                sh 'docker run -d --name d-sql-test mysql:9.5'
-                sh 'docker stop d-sql-test'
-                sh 'docker rm d-sql-test'
-            }
+        stage("Test") {
+            sh 'mvn test'
         }
 
         // stage("Tests") {
