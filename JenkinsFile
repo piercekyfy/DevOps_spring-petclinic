@@ -5,6 +5,11 @@ pipeline {
         maven 'Maven-Default'
     }
 
+    environment {
+        REGISTRY = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
+        IMAGE_TAG = "${REGISTRY}/petclinic:staging-${env.GIT_COMMIT.take(7)}"
+    }
+
     stages {
         stage("Checkout") {
             steps{
@@ -47,7 +52,20 @@ pipeline {
 
         stage("Build Image") {
             steps {
-                sh 'mvn spring-boot:build-image -Dspring-boot.build-image.imageName=petclinic:latest'
+                sh 'mvn spring-boot:build-image -Dspring-boot.build-image.imageName=${IMAGE_TAG}'
+            }
+        }
+
+        stage("Push Image to Registry") {
+            steps {
+                withAWS(
+                    region: env.AWS_REGION,
+                    credentials: 'aws-credentials',
+                    sessionToken: 'aws-session-token'
+                ) {
+                    ecrLogin()
+                    sh 'docker push ${IMAGE_TAG}'
+                }
             }
         }
 
@@ -57,7 +75,7 @@ pipeline {
                 sh 'docker rm petclinic-staging || true'
 
                 sh 'docker run -d --name petclinic-staging -p 8081:8080 petclinic:latest'
-                echo 'PetClinic staging running at http://localhost:8080/'
+                echo 'PetClinic staging running at http://localhost:8081/'
             }
         }
     }
