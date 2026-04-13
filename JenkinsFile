@@ -25,9 +25,9 @@ pipeline {
         stage("Start Databases") {
             when {
                 expression {
-                    params.Profile = 'all' ||
-                    params.Profile = 'mysql' ||
-                    params.Profile = 'postgres'
+                    params.Profile == 'all' ||
+                    params.Profile == 'mysql' ||
+                    params.Profile == 'postgres'
                 }
             }
             steps {
@@ -41,8 +41,8 @@ pipeline {
                 stage('H2') {
                     when {
                         expression {
-                            params.Profile = 'all' ||
-                            params.Profile = 'h2'
+                            params.Profile == 'all' ||
+                            params.Profile == 'h2'
                         }
                     }
                     steps {
@@ -58,8 +58,8 @@ pipeline {
                 stage('MySQL') {
                     when {
                         expression {
-                            params.Profile = 'all' ||
-                            params.Profile = 'mysql'
+                            params.Profile == 'all' ||
+                            params.Profile == 'mysql'
                         }
                     }
                     steps {
@@ -75,8 +75,8 @@ pipeline {
                 stage('Postgres') {
                     when {
                         expression {
-                            params.Profile = 'all' ||
-                            params.Profile = 'postgres'
+                            params.Profile == 'all' ||
+                            params.Profile == 'postgres'
                         }
                     }
                     steps {
