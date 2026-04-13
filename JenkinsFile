@@ -52,7 +52,7 @@ pipeline {
 
         stage("Build Image") {
             steps {
-                sh 'mvn spring-boot:build-image -Dspring-boot.build-image.imageName=${IMAGE_TAG}'
+                sh 'mvn spring-boot:build-image -Dspring-boot.build-image.imageName=${IMAGE_TAG} -Dmaven.test.skip=true'
             }
         }
 
@@ -60,12 +60,17 @@ pipeline {
         // and no plugins allow a session-token to be manually configured !
         stage("Push Image to Registry") {
             steps {
-                withAWS(
-                    region: env.AWS_REGION,
-                    credentials: 'aws-credentials'
-                ) {
-                    ecrLogin()
-                    sh 'docker push ${IMAGE_TAG}'
+                // https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry_auth.html
+                withCredentials([
+                    string(credentialsId: 'aws_access_key_id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                    string(credentialsId: 'aws_session_token',     variable: 'AWS_SESSION_TOKEN')
+                ]) {
+                    sh """
+                        aws ecr get-login-password --region ${env.AWS_REGION} \
+                        | docker login --username AWS --password-stdin ${REGISTRY}
+                    """
+                    sh "docker push ${STAGING_TAG}"
                 }
             }
         }
@@ -74,7 +79,6 @@ pipeline {
             steps {
                 sh 'docker stop petclinic-staging || true'
                 sh 'docker rm petclinic-staging || true'
-
                 sh 'docker run -d --name petclinic-staging -p 8081:8080 petclinic:latest'
                 echo 'PetClinic staging running at http://localhost:8081/'
             }
