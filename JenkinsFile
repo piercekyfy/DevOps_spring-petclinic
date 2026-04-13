@@ -18,16 +18,16 @@ pipeline {
             }
         }
 
-        // stage("Test") {
-        //     steps {
-        //         sh 'mvn test'
-        //     }
-        //     post {
-        //         always {
-        //             junit 'target/surefire-reports/*.xml'
-        //         }
-        //     }
-        // }
+        stage("Test") {
+            steps {
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
 
         stage("Sonar Analysis") {
             steps {
@@ -43,6 +43,19 @@ pipeline {
                     waitForQualityGate abortPipeline: true
                 }
             }
+        }
+
+        stage("Build Image") {
+            steps {
+                sh 'mvn spring-boot:build-image -Dspring-boot.build-image.imageName=petclinic:latest'
+            }
+        }
+
+        stage("Deploy to Local Staging") {
+            sh 'docker stop petclinic-staging || true'
+            sh 'docker rm petclinic-staging || true'
+
+            sh 'docker run -d --name petclinic-staging -p 8081:8080 petclinic:latest'
         }
     }
 }
