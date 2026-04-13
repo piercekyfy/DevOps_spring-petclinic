@@ -3,6 +3,7 @@ pipeline {
 
     tools {
         maven 'Default'
+        docker 'Default'
     }
 
     parameters {
@@ -23,20 +24,6 @@ pipeline {
         stage("Compile") {
             steps {
                 sh 'mvn clean package'
-            }
-        }
-
-        stage("Start Databases") {
-            when {
-                expression {
-                    params.Profile == 'all' ||
-                    params.Profile == 'mysql' ||
-                    params.Profile == 'postgres'
-                }
-            }
-            steps {
-                sh 'docker compose up'
-                sleep 5
             }
         }
 
@@ -67,7 +54,28 @@ pipeline {
                         }
                     }
                     steps {
-                        sh 'mvn test -Dspring.profiles.active=mysql'
+                        script {
+                            def db_net = docker.network('msql-db-net')
+                            db_net.create()
+
+                            docker.image('mysql:9.5').withRun(
+                                '''
+                                --network msql-db-net \
+                                -e MYSQL_USER=petclinic \
+                                -e MYSQL_PASSWORD=petclinic \
+                                -e MYSQL_ROOT_PASSWORD=root \
+                                -e MYSQL_DATABASE=petclinic \
+                                -p 3306:3306'''
+                                ) { container -> 
+                                    // Wait for container health.
+                                    docker.image('mysql:9.5')
+                                        .inside("--network msql-db-net") {
+                                         sh 'while ! mysqladmin ping -h msql-db-net --silent; do sleep 1; done'
+                                    }
+                                    
+                                    sh 'mvn test -Dspring.profiles.active=mysql'
+                                }
+                        }
                     }
                     post {
                         always {
@@ -84,7 +92,27 @@ pipeline {
                         }
                     }
                     steps {
-                        sh 'mvn test -Dspring.profiles.active=postgres'
+                        script {
+                            def db_net = docker.network('postg-db-net')
+                            db_net.create()
+
+                            docker.image('postgres:18.1').withRun(
+                                '''
+                                --network postg-db-net \
+                                -e POSTGRES_USER=petclinic \
+                                -e POSTGRES_PASSWORD=petclinic \
+                                -e POSTGRES_DB=petclinic \
+                                -p 5432:5432'''
+                                ) { container -> 
+                                    // Wait for container health.
+                                    docker.image('postgres:18.1')
+                                        .inside("--network postg-db-net") {
+                                        sh 'while ! pg_isready -h postg-db-net -U petclinic; do sleep 1; done'
+                                    }
+                                    
+                                    sh 'mvn test -Dspring.profiles.active=postgres'
+                                }
+                        }
                     }
                     post {
                         always {
