@@ -36,7 +36,7 @@ pipeline {
                         }
                     }
                     steps {
-                        sh 'mvn test -Dspring.profiles.active='
+                        sh 'mvn test -Dspring.docker.compose.enabled=false -Dspring.profiles.active=default'
                     }
                     post {
                         always {
@@ -72,7 +72,7 @@ pipeline {
                                          sh 'while ! mysqladmin ping -h msql-db-net --silent; do sleep 1; done'
                                     }
                                     
-                                    sh 'mvn test -Dspring.profiles.active=mysql'
+                                    sh 'mvn test -Dspring.docker.compose.enabled=false -Dspring.profiles.active=mysql'
                                 }
                         }
                     }
@@ -109,7 +109,7 @@ pipeline {
                                         sh 'while ! pg_isready -h postg-db-net -U petclinic; do sleep 1; done'
                                     }
                                     
-                                    sh 'mvn test -Dspring.profiles.active=postgres'
+                                    sh 'mvn test -Dspring.docker.compose.enabled=false -Dspring.profiles.active=postgres'
                                 }
                         }
                     }
