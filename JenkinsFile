@@ -52,10 +52,13 @@ pipeline {
         }
 
         stage("Deploy to Local Staging") {
-            sh 'docker stop petclinic-staging || true'
-            sh 'docker rm petclinic-staging || true'
+            steps {
+                sh 'docker stop petclinic-staging || true'
+                sh 'docker rm petclinic-staging || true'
 
-            sh 'docker run -d --name petclinic-staging -p 8081:8080 petclinic:latest'
+                sh 'docker run -d --name petclinic-staging -p 8081:8080 petclinic:latest'
+                echo 'PetClinic staging running at http://localhost:8080/'
+            }
         }
     }
 }
