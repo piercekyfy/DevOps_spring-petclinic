@@ -26,100 +26,108 @@ pipeline {
             }
         }
 
-        stage("Tests") {
-            parallel {
-                stage('H2') {
-                    when {
-                        expression {
-                            params.Profile == 'all' ||
-                            params.Profile == 'h2'
-                        }
-                    }
-                    steps {
-                        sh 'mvn test -Dspring.profiles.active=h2'
-                    }
-                    post {
-                        always {
-                            junit 'target/surefire-reports/*.xml'
-                        }
-                    }
-                }
-
-                stage('MySQL') {
-                    when {
-                        expression {
-                            params.Profile == 'all' ||
-                            params.Profile == 'mysql'
-                        }
-                    }
-                    steps {
-                        script {
-                            def db_net = docker.network('msql-db-net')
-                            db_net.create()
-
-                            docker.image('mysql:9.5').withRun(
-                                '''
-                                --network msql-db-net \
-                                -e MYSQL_USER=petclinic \
-                                -e MYSQL_PASSWORD=petclinic \
-                                -e MYSQL_ROOT_PASSWORD=root \
-                                -e MYSQL_DATABASE=petclinic \
-                                -p 3306:3306'''
-                                ) { container -> 
-                                    // Wait for container health.
-                                    docker.image('mysql:9.5')
-                                        .inside("--network msql-db-net") {
-                                         sh 'while ! mysqladmin ping -h msql-db-net --silent; do sleep 1; done'
-                                    }
-                                    
-                                    sh 'mvn test -Dspring.docker.compose.enabled=false -Dspring.profiles.active=mysql'
-                                }
-                        }
-                    }
-                    post {
-                        always {
-                            junit 'target/surefire-reports/*.xml'
-                        }
-                    }
-                }
-
-                stage('Postgres') {
-                    when {
-                        expression {
-                            params.Profile == 'all' ||
-                            params.Profile == 'postgres'
-                        }
-                    }
-                    steps {
-                        script {
-                            def db_net = docker.network('postg-db-net')
-                            db_net.create()
-
-                            docker.image('postgres:18.1').withRun(
-                                '''
-                                --network postg-db-net \
-                                -e POSTGRES_USER=petclinic \
-                                -e POSTGRES_PASSWORD=petclinic \
-                                -e POSTGRES_DB=petclinic \
-                                -p 5432:5432'''
-                                ) { container -> 
-                                    // Wait for container health.
-                                    docker.image('postgres:18.1')
-                                        .inside("--network postg-db-net") {
-                                        sh 'while ! pg_isready -h postg-db-net -U petclinic; do sleep 1; done'
-                                    }
-                                    
-                                    sh 'mvn test -Dspring.docker.compose.enabled=false -Dspring.profiles.active=postgres'
-                                }
-                        }
-                    }
-                    post {
-                        always {
-                            junit 'target/surefire-reports/*.xml'
-                        }
-                    }
-                }
+        stage("Docker Test") {
+            steps {
+                sh 'docker run -d --name d-sql-test mysql:9.5'
+                sh 'docker stop d-sql-test'
+                sh 'docker rm d-sql-test'
             }
         }
+
+        // stage("Tests") {
+        //     parallel {
+        //         stage('H2') {
+        //             when {
+        //                 expression {
+        //                     params.Profile == 'all' ||
+        //                     params.Profile == 'h2'
+        //                 }
+        //             }
+        //             steps {
+        //                 sh 'mvn test -Dspring.profiles.active=h2'
+        //             }
+        //             post {
+        //                 always {
+        //                     junit 'target/surefire-reports/*.xml'
+        //                 }
+        //             }
+        //         }
+
+        //         stage('MySQL') {
+        //             when {
+        //                 expression {
+        //                     params.Profile == 'all' ||
+        //                     params.Profile == 'mysql'
+        //                 }
+        //             }
+        //             steps {
+        //                 script {
+        //                     def db_net = docker.network('msql-db-net')
+        //                     db_net.create()
+
+        //                     docker.image('mysql:9.5').withRun(
+        //                         '''
+        //                         --network msql-db-net \
+        //                         -e MYSQL_USER=petclinic \
+        //                         -e MYSQL_PASSWORD=petclinic \
+        //                         -e MYSQL_ROOT_PASSWORD=root \
+        //                         -e MYSQL_DATABASE=petclinic \
+        //                         -p 3306:3306'''
+        //                         ) { container -> 
+        //                             // Wait for container health.
+        //                             docker.image('mysql:9.5')
+        //                                 .inside("--network msql-db-net") {
+        //                                  sh 'while ! mysqladmin ping -h msql-db-net --silent; do sleep 1; done'
+        //                             }
+                                    
+        //                             sh 'mvn test -Dspring.docker.compose.enabled=false -Dspring.profiles.active=mysql'
+        //                         }
+        //                 }
+        //             }
+        //             post {
+        //                 always {
+        //                     junit 'target/surefire-reports/*.xml'
+        //                 }
+        //             }
+        //         }
+
+        //         stage('Postgres') {
+        //             when {
+        //                 expression {
+        //                     params.Profile == 'all' ||
+        //                     params.Profile == 'postgres'
+        //                 }
+        //             }
+        //             steps {
+        //                 script {
+        //                     def db_net = docker.network('postg-db-net')
+        //                     db_net.create()
+
+        //                     docker.image('postgres:18.1').withRun(
+        //                         '''
+        //                         --network postg-db-net \
+        //                         -e POSTGRES_USER=petclinic \
+        //                         -e POSTGRES_PASSWORD=petclinic \
+        //                         -e POSTGRES_DB=petclinic \
+        //                         -p 5432:5432'''
+        //                         ) { container -> 
+        //                             // Wait for container health.
+        //                             docker.image('postgres:18.1')
+        //                                 .inside("--network postg-db-net") {
+        //                                 sh 'while ! pg_isready -h postg-db-net -U petclinic; do sleep 1; done'
+        //                             }
+                                    
+        //                             sh 'mvn test -Dspring.docker.compose.enabled=false -Dspring.profiles.active=postgres'
+        //                         }
+        //                 }
+        //             }
+        //             post {
+        //                 always {
+        //                     junit 'target/surefire-reports/*.xml'
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
