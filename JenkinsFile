@@ -31,9 +31,11 @@ pipeline {
 
         stage("Sonar Analysis") {
             steps {
-                def scannerPath = tool 'Sonar-Default'
-                withSonarQubeEnv('Default') {
-                    sh '${scannerPath}/bin/sonar-scanner'
+                script {
+                    def scannerPath = tool 'Sonar-Default'
+                    withSonarQubeEnv('Default') {
+                        sh '${scannerPath}/bin/sonar-scanner'
+                    }
                 }
             }
         }
