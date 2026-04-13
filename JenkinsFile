@@ -36,7 +36,7 @@ pipeline {
                         }
                     }
                     steps {
-                        sh 'mvn test -Dspring.docker.compose.enabled=false -Dspring.profiles.active=default'
+                        sh 'mvn test -Dspring.profiles.active=h2'
                     }
                     post {
                         always {
