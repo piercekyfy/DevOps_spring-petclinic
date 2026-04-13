@@ -56,12 +56,13 @@ pipeline {
             }
         }
 
+        // Need to do ALL aws stuff manually because learner-lab doesn't allow IAM setup
+        // and no plugins allow a session-token to be manually configured !
         stage("Push Image to Registry") {
             steps {
                 withAWS(
                     region: env.AWS_REGION,
-                    credentials: 'aws-credentials',
-                    sessionToken: 'aws-session-token'
+                    credentials: 'aws-credentials'
                 ) {
                     ecrLogin()
                     sh 'docker push ${IMAGE_TAG}'
