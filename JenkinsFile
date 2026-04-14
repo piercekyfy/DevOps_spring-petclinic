@@ -52,7 +52,7 @@ pipeline {
 
         stage("Build Image") {
             steps {
-                sh 'mvn spring-boot:build-image -Dspring-boot.build-image.imageName=${IMAGE_TAG} -Dmaven.test.skip=true'
+                sh "mvn spring-boot:build-image -Dspring-boot.build-image.imageName=${IMAGE_TAG} -Dmaven.test.skip=true"
             }
         }
 
@@ -66,8 +66,8 @@ pipeline {
                     string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
                     string(credentialsId: 'aws_session_token',     variable: 'AWS_SESSION_TOKEN')
                 ]) {
-                    sh 'aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}'
-                    sh 'docker push ${IMAGE_TAG}'
+                    sh "aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}"
+                    sh "docker push ${IMAGE_TAG}"
                     echo "Uploaded image ${IMAGE_TAG}"
                 }
             }
@@ -87,14 +87,14 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'github', variable: 'GITHUB_TOKEN')
                 ]) {
-                    sh '''
+                    sh """
                         gh pr create --repo piercekyfy/DevOps_spring-petclinic \
                         --base main \
                         --head staging \
                         --title "Release ${env.GIT_COMMIT.take(7)}" \
                         --body "Automated release PR. Related image: ${IMAGE_TAG}" \
                         || echo "Identical PR already exists..."
-                    '''
+                    """
                 }
             }
         }
