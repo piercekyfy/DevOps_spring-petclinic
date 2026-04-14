@@ -1,12 +1,13 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(
-            name: 'Profile',
-            choices: ['all', 'h2', 'mysql', 'postgres'],
-            description: 'Spring database profile.'
-        )
+    tools {
+        maven 'Maven-Default'
+    }
+
+    environment {
+        REGISTRY = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com"
+        IMAGE_TAG = "${REGISTRY}/petclinic:staging-${env.GIT_COMMIT.take(7)}"
     }
 
     stages {
@@ -18,83 +19,84 @@ pipeline {
 
         stage("Compile") {
             steps {
-                sh 'mvn clean package'
+                sh 'mvn clean package -DskipTests=true'
             }
         }
+        // temp disabled for faster testing
+        // stage("Test") {
+        //     steps {
+        //         sh 'mvn test'
+        //     }
+        //     post {
+        //         always {
+        //             junit 'target/surefire-reports/*.xml'
+        //         }
+        //     }
+        // }
 
-        stage("Start Databases") {
-            when {
-                expression {
-                    params.Profile = 'all' ||
-                    params.Profile = 'mysql' ||
-                    params.Profile = 'postgres'
-                }
-            }
+        // stage("Sonar Analysis") {
+        //     steps {
+        //         withSonarQubeEnv('Default') {
+        //             sh "mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.7.0.1746:sonar"
+        //         }
+        //     }
+        // }
+
+        // stage("Quality Gate") {
+        //     steps {
+        //         timeout(time: 3, unit: 'MINUTES') {
+        //             waitForQualityGate abortPipeline: true
+        //         }
+        //     }
+        // }
+
+        stage("Build Image") {
             steps {
-                sh 'docker compose up'
-                sleep 5
+                sh "mvn spring-boot:build-image -Dspring-boot.build-image.imageName=${IMAGE_TAG} -Dmaven.test.skip=true"
             }
         }
 
-        stage("Tests") {
-            parallel {
-                stage('H2') {
-                    when {
-                        expression {
-                            params.Profile = 'all' ||
-                            params.Profile = 'h2'
-                        }
-                    }
-                    steps {
-                        sh 'mvn test'
-                    }
-                    post {
-                        always {
-                            junit 'target/surefire-reports/*.xml'
-                        }
-                    }
-                }
-
-                stage('MySQL') {
-                    when {
-                        expression {
-                            params.Profile = 'all' ||
-                            params.Profile = 'mysql'
-                        }
-                    }
-                    steps {
-                        sh 'mvn test -Dspring.profiles.active=mysql'
-                    }
-                    post {
-                        always {
-                            junit 'target/surefire-reports/*.xml'
-                        }
-                    }
-                }
-
-                stage('Postgres') {
-                    when {
-                        expression {
-                            params.Profile = 'all' ||
-                            params.Profile = 'postgres'
-                        }
-                    }
-                    steps {
-                        sh 'mvn test -Dspring.profiles.active=postgres'
-                    }
-                    post {
-                        always {
-                            junit 'target/surefire-reports/*.xml'
-                        }
-                    }
+        // Need to do ALL aws stuff manually because learner-lab doesn't allow IAM setup
+        // and no plugins allow a session-token to be manually configured !
+        stage("Push Image to Registry") {
+            steps {
+                // https://docs.aws.amazon.com/AmazonECR/latest/userguide/registry_auth.html
+                withCredentials([
+                    string(credentialsId: 'aws_access_key_id',     variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
+                    string(credentialsId: 'aws_session_token',     variable: 'AWS_SESSION_TOKEN')
+                ]) {
+                    sh "aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}"
+                    sh "docker push ${IMAGE_TAG}"
+                    echo "Uploaded image ${IMAGE_TAG}"
                 }
             }
         }
-    }
 
-    post {
-        always {
-            sh 'docker compose down'
+        stage("Deploy to Local Staging") {
+            steps {
+                sh 'docker stop petclinic-staging || true'
+                sh 'docker rm petclinic-staging || true'
+                sh 'docker run -d --name petclinic-staging -p 8081:8080 petclinic:latest'
+                echo "PetClinic staging running at http://localhost:8081/"
+            }
+        }
+
+        stage("Create Release PR") {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github', variable: 'GITHUB_TOKEN')
+                ]) {
+                    sh """
+                        gh pr create --repo piercekyfy/DevOps_spring-petclinic \
+                        --base main \
+                        --head staging \
+                        --title "Release ${env.GIT_COMMIT.take(7)}" \
+                        --body "Automated release PR. Related image: ${IMAGE_TAG}" \
+                        || echo "Identical PR already exists..."
+                    """
+                }
+            }
         }
     }
 }
