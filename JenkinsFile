@@ -67,7 +67,7 @@ pipeline {
                     string(credentialsId: 'aws_session_token',     variable: 'AWS_SESSION_TOKEN')
                 ]) {
                     sh "aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}"
-                    sh "docker push ${STAGING_TAG}"
+                    sh "docker push ${IMAGE_TAG}"
                 }
             }
         }
