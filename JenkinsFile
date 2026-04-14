@@ -66,10 +66,7 @@ pipeline {
                     string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
                     string(credentialsId: 'aws_session_token',     variable: 'AWS_SESSION_TOKEN')
                 ]) {
-                    sh """
-                        set -x
-                        aws sts get-caller-identity --region ${env.AWS_REGION}
-                    """
+                    sh 'echo "hello world"'
                     // script {
                     //     def loginPassword = sh(
                     //         script: "aws ecr get-login-password --region ${env.AWS_REGION}",
