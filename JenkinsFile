@@ -66,16 +66,20 @@ pipeline {
                     string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
                     string(credentialsId: 'aws_session_token',     variable: 'AWS_SESSION_TOKEN')
                 ]) {
-                    script {
-                        def loginPassword = sh(
-                            script: "aws ecr get-login-password --region ${env.AWS_REGION}",
-                            returnStdout: true
-                        ).trim()
-                        sh "echo ${loginPassword}"
-                        sh "echo '${loginPassword}' | docker login --username AWS --password-stdin ${REGISTRY}"
-                    }
-                    //sh "aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}"
-                    sh "docker push ${STAGING_TAG}"
+                    sh """
+                        set -x
+                        aws sts get-caller-identity --region ${env.AWS_REGION}
+                    """
+                    // script {
+                    //     def loginPassword = sh(
+                    //         script: "aws ecr get-login-password --region ${env.AWS_REGION}",
+                    //         returnStdout: true
+                    //     ).trim()
+                    //     sh "echo ${loginPassword}"
+                    //     sh "echo '${loginPassword}' | docker login --username AWS --password-stdin ${REGISTRY}"
+                    // }
+                    // //sh "aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}"
+                    // sh "docker push ${STAGING_TAG}"
                 }
             }
         }
