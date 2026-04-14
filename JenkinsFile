@@ -68,6 +68,7 @@ pipeline {
                 ]) {
                     sh "aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}"
                     sh "docker push ${IMAGE_TAG}"
+                    sh "docker push ${REGISTRY}/petclinic:staging-latest"
                     echo "Uploaded image ${IMAGE_TAG}"
                 }
             }
