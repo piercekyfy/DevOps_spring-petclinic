@@ -66,8 +66,9 @@ pipeline {
                     string(credentialsId: 'aws_secret_access_key', variable: 'AWS_SECRET_ACCESS_KEY'),
                     string(credentialsId: 'aws_session_token',     variable: 'AWS_SESSION_TOKEN')
                 ]) {
-                    sh "aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}"
-                    sh "docker push ${IMAGE_TAG}"
+                    sh 'aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}'
+                    sh 'docker push ${IMAGE_TAG}'
+                    echo "Uploaded image ${IMAGE_TAG}"
                 }
             }
         }
@@ -77,7 +78,24 @@ pipeline {
                 sh 'docker stop petclinic-staging || true'
                 sh 'docker rm petclinic-staging || true'
                 sh 'docker run -d --name petclinic-staging -p 8081:8080 petclinic:latest'
-                echo 'PetClinic staging running at http://localhost:8081/'
+                echo "PetClinic staging running at http://localhost:8081/"
+            }
+        }
+
+        stage("Create Release PR") {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github', variable: 'GITHUB_TOKEN')
+                ]) {
+                    sh '''
+                        gh pr create --repo piercekyfy/DevOps_spring-petclinic \
+                        --base main \
+                        --head staging \
+                        --title "Release ${env.GIT_COMMIT.take(7)}" \
+                        --body "Automated release PR. Related image: ${IMAGE_TAG}" \
+                        || echo "Identical PR already exists..."
+                    '''
+                }
             }
         }
     }
