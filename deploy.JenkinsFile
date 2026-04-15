@@ -17,9 +17,9 @@ pipeline {
                             returnStdout: true
                         ).trim()
 
-                        env.STAGING_TAG = " ${REGISTRY}/petclinic:staging-${sha}"
+                        env.STAGING_TAG = "${REGISTRY}/petclinic:staging-${sha}"
+                        echo "Found release candidate: ${env.STAGING_TAG}"
                     }
-                    echo "Found release candidate: ${env.STAGING_TAG}"
                 }
             }
         }
