@@ -87,6 +87,12 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'github', variable: 'GITHUB_TOKEN')
                 ]) {
+                    // Tag the commit, so it can be found to trace back to image artifact later.
+                    sh 'gh api --method DELETE /repos/piercekyfy/DevOps_spring-petclinic/git/refs/tags/release-candidate || true'
+                    sh """
+                        gh api --method POST /repos/piercekyfy/DevOps_spring-petclinic/git/refs -f ref="refs/tags/staging-candidate" -f sha="${env.GIT_COMMIT}"
+                    """"
+
                     sh """
                         gh pr create --repo piercekyfy/DevOps_spring-petclinic \
                         --base main \
