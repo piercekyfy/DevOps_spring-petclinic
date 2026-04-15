@@ -56,6 +56,15 @@ pipeline {
             }
         }
 
+        stage("Deploy to Local Staging") {
+            steps {
+                sh 'docker stop petclinic-staging || true'
+                sh 'docker rm petclinic-staging || true'
+                sh "docker run -d --name petclinic-staging -p 8081:8080 ${IMAGE_TAG}"
+                echo "PetClinic staging running at http://localhost:8081/"
+            }
+        }
+
         // Need to do ALL aws stuff manually because learner-lab doesn't allow IAM setup
         // and no plugins allow a session-token to be manually configured !
         stage("Push Image to Registry") {
@@ -70,15 +79,6 @@ pipeline {
                     sh "docker push ${IMAGE_TAG}"
                     echo "Uploaded image ${IMAGE_TAG}"
                 }
-            }
-        }
-
-        stage("Deploy to Local Staging") {
-            steps {
-                sh 'docker stop petclinic-staging || true'
-                sh 'docker rm petclinic-staging || true'
-                sh 'docker run -d --name petclinic-staging -p 8081:8080 petclinic:latest'
-                echo "PetClinic staging running at http://localhost:8081/"
             }
         }
 
