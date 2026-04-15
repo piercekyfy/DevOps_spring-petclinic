@@ -13,7 +13,7 @@ pipeline {
                 ]) {
                     script {
                         def sha = sh(
-                            script: "gh api /repos/piercekyfy/DevOps_spring-petclinic/git/ref/tags/staging-candidate | jq -r '.object.sha' | cut -c1-7",
+                            script: "gh api /repos/piercekyfy/DevOps_spring-petclinic/git/ref/tags/release-candidate | jq -r '.object.sha' | cut -c1-7",
                             returnStdout: true
                         ).trim()
 
