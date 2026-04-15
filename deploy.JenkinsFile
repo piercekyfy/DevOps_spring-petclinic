@@ -12,10 +12,22 @@ pipeline {
                     string(credentialsId: 'github', variable: 'GITHUB_TOKEN')
                 ]) {
                     script {
-                        def sha = sh(
-                            script: "gh api /repos/piercekyfy/DevOps_spring-petclinic/git/ref/tags/release-candidate | jq -r '.object.sha' | cut -c1-7",
+                        def apiResponse = sh(
+                            script: "gh api /repos/piercekyfy/DevOps_spring-petclinic/git/ref/tags/release-candidate",
                             returnStdout: true
                         ).trim()
+                        echo "API Response: ${apiResponse}"
+
+                        def sha = sh(
+                            script: """
+                                echo '${apiResponse}' | jq -r '.object.sha' | cut -c1-7
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        if (!sha) {
+                            error("Found no release candiate.")
+                        }
 
                         env.STAGING_TAG = "${REGISTRY}/petclinic:staging-${sha}"
                         echo "Found release candidate: ${env.STAGING_TAG}"
