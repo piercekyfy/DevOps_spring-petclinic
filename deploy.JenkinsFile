@@ -6,6 +6,24 @@ pipeline {
     }
 
     stages {
+        stage("Find Staging Artifact") {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'github', variable: 'GITHUB_TOKEN')
+                ]) {
+                    script {
+                        def sha = sh(
+                            script: "gh api /repos/piercekyfy/DevOps_spring-petclinic/git/ref/tags/staging-candidate | jq -r '.object.sha' | cut -c1-7",
+                            returnStdout: true
+                        ).trim()
+
+                        env.STAGING_TAG = " ${REGISTRY}/petclinic:staging-${sha}"
+                    }
+                    echo "Found release candidate: ${env.STAGING_TAG}"
+                }
+            }
+        }
+
         stage("Generate Latest Artifact") {
             steps {
                 withCredentials([
@@ -14,8 +32,8 @@ pipeline {
                         string(credentialsId: 'aws_session_token',     variable: 'AWS_SESSION_TOKEN')
                 ]) {
                     sh "aws ecr get-login-password --region ${env.AWS_REGION} | docker login --username AWS --password-stdin ${REGISTRY}"
-                    sh "docker pull ${REGISTRY}/petclinic:staging-${env.GIT_COMMIT.take(7)}"
-                    sh "docker tag ${REGISTRY}/petclinic:staging-${env.GIT_COMMIT.take(7)} ${REGISTRY}/petclinic:latest"
+                    sh "docker pull ${env.STAGING_TAG}"
+                    sh "docker tag ${env.STAGING_TAG} ${REGISTRY}/petclinic:latest"
                     sh "docker push ${REGISTRY}/petclinic:latest"
                 }
             }
